@@ -1,4 +1,9 @@
 import 'package:beatgrid/app/theme/app_theme.dart';
+import 'package:beatgrid/core/services/audio_coordinator.dart';
+import 'package:beatgrid/core/services/unsaved_changes_guard.dart';
+import 'package:beatgrid/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:beatgrid/features/beats/data/beat_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:beatgrid/features/studio/models/beat_pattern.dart';
 import 'package:beatgrid/features/studio/presentation/studio_page.dart';
 import 'package:beatgrid/features/studio/presentation/widgets/mixer_panel.dart';
@@ -8,6 +13,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fakes/fake_audio_engine.dart';
+import 'fakes/fake_auth_repository.dart';
+import 'fakes/fake_beat_repository.dart';
 
 Future<void> pumpStudio(
   WidgetTester tester,
@@ -17,10 +24,22 @@ Future<void> pumpStudio(
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
+  final auth = AuthCubit(FakeAuthRepository(userId: 'u1'));
+  addTearDown(auth.close);
   await tester.pumpWidget(
-    MaterialApp(
-      theme: AppTheme.dark,
-      home: Scaffold(body: StudioPage(engine: engine)),
+    MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<BeatRepository>.value(value: FakeBeatRepository()),
+        RepositoryProvider.value(value: UnsavedChangesGuard()),
+        RepositoryProvider.value(value: AudioCoordinator()),
+      ],
+      child: BlocProvider.value(
+        value: auth,
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(body: StudioPage(engine: engine)),
+        ),
+      ),
     ),
   );
   await tester.pump();

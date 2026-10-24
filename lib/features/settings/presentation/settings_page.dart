@@ -29,8 +29,8 @@ class SettingsPage extends StatelessWidget {
             a.status != b.status,
         builder: (context, state) {
           if (state.profileError != null) {
-            return SizedBox(
-              height: 360,
+            return ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 360),
               child: ErrorState(
                 title: 'Could not load your profile',
                 message: state.profileError!,

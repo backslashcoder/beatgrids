@@ -135,6 +135,11 @@ AppFailure _postgrest(PostgrestException e) {
         'Some values are not allowed. Check your input.',
         code: 'invalid_input',
       );
+    case 'PGRST116':
+      return const AppFailure(
+        'That beat could not be found, or it is not yours to change.',
+        code: 'not_found',
+      );
     case '42501':
       return const AppFailure(
         'You do not have permission to do that.',

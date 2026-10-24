@@ -2,23 +2,33 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/services/unsaved_changes_guard.dart';
+import '../../core/widgets/feedback.dart';
 import '../../core/widgets/states.dart';
+import '../../features/beats/presentation/my_beats_page.dart';
+import '../../features/community/presentation/beat_detail_page.dart';
 import '../../features/community/presentation/explore_page.dart';
+import '../../features/community/presentation/profile_page.dart';
+import '../../features/community/presentation/saved_page.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/password_pages.dart';
 import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/dev/component_gallery_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/home/presentation/home_page.dart';
+import '../../features/studio/audio/audio_engine.dart';
 import '../../features/studio/presentation/studio_page.dart';
-import '../../core/widgets/coming_soon_page.dart';
 import '../shell/app_shell.dart';
 import '../theme/app_spacing.dart';
 import 'route_guards.dart';
 
-CustomTransitionPage<void> _page(GoRouterState state, Widget child) {
+CustomTransitionPage<void> _page(
+  GoRouterState state,
+  Widget child, {
+  LocalKey? key,
+}) {
   return CustomTransitionPage<void>(
-    key: state.pageKey,
+    key: key ?? state.pageKey,
     child: child,
     transitionDuration: const Duration(milliseconds: 220),
     transitionsBuilder: (context, animation, _, child) {
@@ -41,6 +51,8 @@ CustomTransitionPage<void> _page(GoRouterState state, Widget child) {
   );
 }
 
+const _studioPageKey = ValueKey('studio-page');
+
 abstract final class AppRouter {
   /// [signedIn] and [recovering] come from the auth state; with neither given,
   /// protected routes redirect to /login. [refreshListenable] re-runs the
@@ -50,7 +62,22 @@ abstract final class AppRouter {
     bool Function()? recovering,
     Listenable? refreshListenable,
     String initialLocation = '/',
+    UnsavedChangesGuard? unsavedGuard,
+    AudioEngine Function()? engineFactory,
   }) {
+    // Asked when leaving a studio route; blocks navigation if the user cancels.
+    Future<bool> leaveStudio(BuildContext context, GoRouterState state) async {
+      if (unsavedGuard == null) return true;
+      if (unsavedGuard.consumeSkip() || !unsavedGuard.hasUnsaved) return true;
+      return confirmDialog(
+        context,
+        title: 'Leave without saving?',
+        message: 'You have unsaved changes to this beat. If you leave now they will be lost.',
+        confirmLabel: 'Leave',
+        destructive: true,
+      );
+    }
+
     return GoRouter(
       initialLocation: initialLocation,
       refreshListenable: refreshListenable,
@@ -81,39 +108,48 @@ abstract final class AppRouter {
               path: '/explore',
               pageBuilder: (c, s) => _page(s, const ExplorePage()),
             ),
+            // Both studio routes share one page key so saving a new beat can move
+            // the URL to /studio/<id> without rebuilding the studio or its audio.
             GoRoute(
               path: '/studio',
-              pageBuilder: (c, s) => _page(s, const StudioPage()),
+              onExit: leaveStudio,
+              pageBuilder: (c, s) => _page(
+                s,
+                StudioPage(engine: engineFactory?.call()),
+                key: _studioPageKey,
+              ),
             ),
             GoRoute(
               path: '/studio/:id',
-              pageBuilder: (c, s) =>
-                  _page(s, StudioPage(beatId: s.pathParameters['id'])),
+              onExit: leaveStudio,
+              pageBuilder: (c, s) => _page(
+                s,
+                StudioPage(
+                  beatId: s.pathParameters['id'],
+                  engine: engineFactory?.call(),
+                ),
+                key: _studioPageKey,
+              ),
+            ),
+            GoRoute(
+              path: '/my-beats',
+              pageBuilder: (c, s) => _page(s, const MyBeatsPage()),
             ),
             GoRoute(
               path: '/beat/:id',
-              pageBuilder: (c, s) => _page(
-                s,
-                ComingSoonPage(
-                  title: 'Beat',
-                  icon: Icons.album_outlined,
-                  phase: 6,
-                  description:
-                      'Published beat pages (${s.pathParameters['id']}) arrive with the community.',
-                ),
-              ),
+              pageBuilder: (c, s) =>
+                  _page(s, BeatDetailPage(slug: s.pathParameters['id']!)),
             ),
             GoRoute(
               path: '/profile/:username',
               pageBuilder: (c, s) => _page(
                 s,
-                ComingSoonPage(
-                  title: '@${s.pathParameters['username']}',
-                  icon: Icons.person_outline,
-                  phase: 6,
-                  description: 'Creator profiles arrive with the community.',
-                ),
+                ProfilePage(username: s.pathParameters['username']!),
               ),
+            ),
+            GoRoute(
+              path: '/saved',
+              pageBuilder: (c, s) => _page(s, const SavedPage()),
             ),
             GoRoute(
               path: '/settings',

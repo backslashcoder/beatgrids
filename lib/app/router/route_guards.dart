@@ -4,7 +4,12 @@
 /// studio (anyone can try the sequencer; saving and publishing will require an
 /// account). Protected: editing an existing beat and account settings.
 abstract final class RouteGuards {
-  static const _protectedExact = {'/settings', '/reset-password'};
+  static const _protectedExact = {
+    '/settings',
+    '/reset-password',
+    '/my-beats',
+    '/saved',
+  };
   static const _protectedPrefixes = ['/studio/'];
   static const _authPages = {'/login', '/signup', '/forgot-password'};
 

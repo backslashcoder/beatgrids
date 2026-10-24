@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/creator_avatar.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/community/presentation/widgets/mini_player.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -55,7 +56,13 @@ class AppShell extends StatelessWidget {
         preferredSize: const Size.fromHeight(64),
         child: _TopBar(selected: selected, mobile: mobile, width: width),
       ),
-      body: child,
+      body: Column(
+        children: [
+          Expanded(child: child),
+          // The studio owns the audio engine while open, so the preview player hides there.
+          if (!path.startsWith('/studio')) const MiniPlayer(),
+        ],
+      ),
       bottomNavigationBar: mobile && selected >= 0
           ? NavigationBar(
               selectedIndex: selected,
@@ -233,6 +240,10 @@ class _AccountArea extends StatelessWidget {
                 case 'profile':
                   if (profile != null)
                     context.go('/profile/${profile.username}');
+                case 'mybeats':
+                  context.go('/my-beats');
+                case 'saved':
+                  context.go('/saved');
                 case 'settings':
                   context.go('/settings');
                 case 'signout':
@@ -246,6 +257,8 @@ class _AccountArea extends StatelessWidget {
                   value: 'profile',
                   child: Text('@${profile.username}'),
                 ),
+              const PopupMenuItem(value: 'mybeats', child: Text('My beats')),
+              const PopupMenuItem(value: 'saved', child: Text('Saved beats')),
               const PopupMenuItem(value: 'settings', child: Text('Settings')),
               const PopupMenuItem(value: 'signout', child: Text('Sign out')),
             ],

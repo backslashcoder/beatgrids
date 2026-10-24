@@ -1,6 +1,7 @@
 import 'package:beatgrid/app/app.dart';
 import 'package:beatgrid/app/router/app_router.dart';
 import 'package:beatgrid/app/router/stream_listenable.dart';
+import 'package:beatgrid/core/services/unsaved_changes_guard.dart';
 import 'package:beatgrid/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:beatgrid/core/widgets/bg_button.dart';
 import 'package:beatgrid/core/widgets/chips_and_toggles.dart';
@@ -9,20 +10,31 @@ import 'package:beatgrid/app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fakes/fake_audio_engine.dart';
 import 'fakes/fake_auth_repository.dart';
+import 'fakes/fake_beat_repository.dart';
+import 'fakes/fake_community_repository.dart';
 
 Future<FakeAuthRepository> pumpApp(
   WidgetTester tester, {
   String location = '/',
   Size size = const Size(1280, 900),
   FakeAuthRepository? repo,
+  FakeBeatRepository? beats,
+  FakeCommunityRepository? community,
+  FakeAudioEngine? playerEngine,
+  FakeAudioEngine? engine,
+  UnsavedChangesGuard? guard,
 }) async {
+  // Tear down any app from an earlier pumpApp call in the same test.
+  await tester.pumpWidget(const SizedBox());
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   final fake = repo ?? FakeAuthRepository();
   final cubit = AuthCubit(fake);
   addTearDown(cubit.close);
+  guard ??= UnsavedChangesGuard();
   final refresh = StreamListenable(cubit.stream);
   addTearDown(refresh.dispose);
   final router = AppRouter.create(
@@ -30,9 +42,20 @@ Future<FakeAuthRepository> pumpApp(
     signedIn: () => cubit.state.isSignedIn,
     recovering: () => cubit.state.recovering,
     refreshListenable: refresh,
+    unsavedGuard: guard,
+    engineFactory: engine == null ? null : () => engine,
   );
   addTearDown(router.dispose);
-  await tester.pumpWidget(BeatGridApp(authCubit: cubit, router: router));
+  await tester.pumpWidget(
+    BeatGridApp(
+      authCubit: cubit,
+      beatRepository: beats ?? FakeBeatRepository(),
+      communityRepository: community ?? FakeCommunityRepository(),
+      playerEngineFactory: playerEngine == null ? null : () => playerEngine,
+      unsavedGuard: guard,
+      router: router,
+    ),
+  );
   await settle(tester);
   return fake;
 }
@@ -68,7 +91,7 @@ void main() {
       ),
     );
     await settle(tester);
-    expect(find.textContaining('trending beats'), findsOneWidget);
+    expect(find.text('Beats made by the BeatGrid community.'), findsOneWidget);
   });
 
   testWidgets('protected route redirects anonymous users to login', (
@@ -87,10 +110,15 @@ void main() {
     expect(find.text('Page not found'), findsOneWidget);
   });
 
-  testWidgets('beat and profile routes accept parameters', (tester) async {
-    await pumpApp(tester, location: '/profile/ada');
-    expect(find.text('@ada'), findsWidgets);
-  });
+  testWidgets(
+    'unknown beat and creator routes show friendly not-found states',
+    (tester) async {
+      await pumpApp(tester, location: '/profile/nobody');
+      expect(find.text('Creator not found'), findsOneWidget);
+      await pumpApp(tester, location: '/beat/no-such-beat');
+      expect(find.text('Beat not found'), findsOneWidget);
+    },
+  );
 
   testWidgets('studio route loads on desktop and mobile without overflow', (
     tester,

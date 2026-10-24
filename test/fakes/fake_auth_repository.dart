@@ -17,6 +17,13 @@ UserProfile fakeProfile({
   createdAt: DateTime(2026),
 );
 
+UserProfile fakeProfileWithId(String id) => UserProfile(
+  id: id,
+  username: 'ada',
+  displayName: 'Ada',
+  createdAt: DateTime(2026),
+);
+
 class FakeAuthRepository implements AuthRepository {
   // ignore: prefer_initializing_formals
   FakeAuthRepository({String? userId}) : _userId = userId;

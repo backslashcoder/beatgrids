@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/services/audio_coordinator.dart';
 import '../../audio/audio_engine.dart';
 import '../../models/beat_pattern.dart';
 import '../../models/pattern_history.dart';
@@ -94,14 +95,17 @@ class StudioState extends Equatable {
 /// Owns the studio's editable state and the [AudioEngine] lifecycle. Audio
 /// scheduling itself happens in the JavaScript engine, never here.
 class StudioCubit extends Cubit<StudioState> {
-  StudioCubit(this._engine, {Random? random})
+  StudioCubit(this._engine, {Random? random, AudioCoordinator? coordinator})
     : _random = random ?? Random(),
+      // ignore: prefer_initializing_formals
+      _coordinator = coordinator,
       _history = UndoHistory(BeatPattern.empty()),
       super(StudioState()) {
     _sub = _engine.status.listen(_onPlayback);
   }
 
   final AudioEngine _engine;
+  final AudioCoordinator? _coordinator;
   final Random _random;
   final UndoHistory<BeatPattern> _history;
   StreamSubscription<PlaybackStatus>? _sub;
@@ -130,6 +134,8 @@ class StudioCubit extends Cubit<StudioState> {
       state.copyWith(audio: AudioStatus.initializing, clearAudioError: true),
     );
     try {
+      // Takes the engine from the community player if it is playing.
+      _coordinator?.claim(this, onRevoked: _onRevoked);
       await _engine.init();
       if (isClosed) return;
       _pushAllToEngine();
@@ -155,6 +161,27 @@ class StudioCubit extends Cubit<StudioState> {
         ..setTrackVolume(t, p.trackVolumes[t]!)
         ..setTrackMuted(t, p.mutedTracks.contains(t));
     }
+  }
+
+  /// Another owner (the community player) took the engine: stop and let go;
+  /// the next Play re-initializes it.
+  void _onRevoked() {
+    if (isClosed) return;
+    try {
+      _engine.stop();
+    } on AudioEngineException {
+      // Already released.
+    }
+    _engine.dispose();
+    _initFuture = null;
+    emit(
+      state.copyWith(
+        audio: AudioStatus.idle,
+        playback: PlaybackState.stopped,
+        step: -1,
+        clearAudioError: true,
+      ),
+    );
   }
 
   bool get _ready => state.audio == AudioStatus.ready;
@@ -353,6 +380,7 @@ class StudioCubit extends Cubit<StudioState> {
   @override
   Future<void> close() {
     _sub?.cancel();
+    _coordinator?.release(this);
     _engine.dispose(); // releases Tone.js nodes and the transport
     return super.close();
   }

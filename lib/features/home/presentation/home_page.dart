@@ -1,12 +1,16 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../core/widgets/bg_button.dart';
 import '../../../core/widgets/page_container.dart';
+import '../../community/data/community_repository.dart';
+import '../../community/presentation/cubit/beat_list_cubit.dart';
+import '../../community/presentation/widgets/beat_list_view.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -108,6 +112,8 @@ class HomePage extends StatelessWidget {
                   ],
                 ],
               ),
+              const SizedBox(height: AppSpacing.xxl),
+              const _LatestSection(),
               const SizedBox(height: AppSpacing.xxl),
             ],
           );
@@ -240,6 +246,41 @@ class _HeroGridState extends State<_HeroGrid>
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+/// The newest published beats, straight from the community.
+class _LatestSection extends StatelessWidget {
+  const _LatestSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<BeatListCubit>(
+      create: (_) =>
+          ExploreCubit(context.read<CommunityRepository>())..reload(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHeader(
+            title: 'Fresh from the community',
+            trailing: TextButton(
+              key: const Key('home-see-all'),
+              onPressed: () => context.go('/explore'),
+              child: const Text('See all'),
+            ),
+          ),
+          BeatListView(
+            maxItems: 4,
+            emptyIcon: Icons.library_music_outlined,
+            emptyTitle: 'No beats published yet',
+            emptyMessage:
+                'Be the first: make a beat in the studio and publish it.',
+            emptyActionLabel: 'Make a beat',
+            onEmptyAction: () => context.go('/studio'),
+          ),
+        ],
       ),
     );
   }
