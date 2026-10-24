@@ -46,4 +46,13 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local Supabase config and DB test deps (never commit real project config)
+/config/dart_defines.local.json
+/supabase/tests/node_modules/
+.env
+.env.*
+!.env.example
+
 /docs/
+/supabase/

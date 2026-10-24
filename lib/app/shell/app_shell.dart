@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/widgets/creator_avatar.dart';
+import '../../features/auth/presentation/cubit/auth_cubit.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_spacing.dart';
@@ -108,23 +112,7 @@ class _TopBar extends StatelessWidget {
                       ),
                   ],
                   const Spacer(),
-                  if (mobile)
-                    IconButton(
-                      tooltip: 'Sign in',
-                      onPressed: () => context.go('/login'),
-                      icon: const Icon(Icons.account_circle_outlined),
-                    )
-                  else ...[
-                    TextButton(
-                      onPressed: () => context.go('/login'),
-                      child: const Text('Sign in'),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    FilledButton(
-                      onPressed: () => context.go('/signup'),
-                      child: const Text('Sign up'),
-                    ),
-                  ],
+                  _AccountArea(mobile: mobile),
                 ],
               ),
             ),
@@ -217,6 +205,82 @@ class _NavLink extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Sign in / sign up buttons, or the account menu when signed in.
+class _AccountArea extends StatelessWidget {
+  const _AccountArea({required this.mobile});
+
+  final bool mobile;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthCubit, AuthState>(
+      buildWhen: (a, b) =>
+          a.isSignedIn != b.isSignedIn || a.profile != b.profile,
+      builder: (context, state) {
+        if (state.isSignedIn) {
+          final cubit = context.read<AuthCubit>();
+          final profile = state.profile;
+          return PopupMenuButton<String>(
+            tooltip: 'Account',
+            offset: const Offset(0, 48),
+            color: AppColors.surfaceRaised,
+            onSelected: (value) {
+              switch (value) {
+                case 'profile':
+                  if (profile != null)
+                    context.go('/profile/${profile.username}');
+                case 'settings':
+                  context.go('/settings');
+                case 'signout':
+                  cubit.signOut();
+                  context.go('/');
+              }
+            },
+            itemBuilder: (_) => [
+              if (profile != null)
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Text('@${profile.username}'),
+                ),
+              const PopupMenuItem(value: 'settings', child: Text('Settings')),
+              const PopupMenuItem(value: 'signout', child: Text('Sign out')),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: CreatorAvatar(
+                name: profile?.displayName ?? '?',
+                imageUrl: cubit.avatarUrl(profile),
+                size: 36,
+              ),
+            ),
+          );
+        }
+        if (mobile) {
+          return IconButton(
+            tooltip: 'Sign in',
+            onPressed: () => context.go('/login'),
+            icon: const Icon(Icons.account_circle_outlined),
+          );
+        }
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: () => context.go('/login'),
+              child: const Text('Sign in'),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton(
+              onPressed: () => context.go('/signup'),
+              child: const Text('Sign up'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

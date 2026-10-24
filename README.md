@@ -3,7 +3,7 @@
 Browser-based beat-making studio and creator community, built with Flutter Web,
 Tone.js (audio engine) and Supabase (backend, from Phase 3).
 
-**Status:** Phase 1 (audio-engine technical spike) is complete. See
+**Status:** Phases 1-3 are built (audio spike, design system/shell, Supabase auth and database). The Supabase migrations still need to be applied to your project (see below). See
 [docs/ROADMAP.md](docs/ROADMAP.md) for what exists and what is next.
 
 ## Requirements
@@ -12,11 +12,19 @@ Tone.js (audio engine) and Supabase (backend, from Phase 3).
 - Chrome, Edge, Firefox or Safari (desktop) for audio verification
 - Node.js is only needed if you want to serve a release build locally with `npx http-server`
 
+## Configure Supabase
+
+1. Copy `config/dart_defines.example.json` to `config/dart_defines.local.json` (git-ignored) and fill in the project URL and **publishable** key (Project Settings > API). Never use the secret/service-role key.
+2. Apply the schema once: `node supabase/bundle.mjs`, paste `supabase/apply_all.sql` into the Supabase dashboard SQL editor and run it. (Or `supabase link` + `supabase db push`.)
+3. Authentication > URL Configuration: set Site URL to your deployed origin and add `http://localhost:*/**` as a redirect URL so confirmation and password-reset links return to the app.
+
+Without step 1 the app still runs (studio, home) and the auth pages say accounts are unavailable.
+
 ## Run
 
 ```bash
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --dart-define-from-file=config/dart_defines.local.json
 ```
 
 Press **Start audio engine** first: browsers only allow audio after a user gesture.
@@ -26,7 +34,8 @@ Press **Start audio engine** first: browsers only allow audio after a user gestu
 ```bash
 flutter analyze
 flutter test
-flutter build web --release
+flutter build web --release --dart-define-from-file=config/dart_defines.local.json
+cd supabase/tests && npm install && npm test   # database/RLS tests, no Docker needed
 ```
 
 ## Layout

@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/states.dart';
 import '../../features/community/presentation/explore_page.dart';
+import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/password_pages.dart';
+import '../../features/auth/presentation/pages/signup_page.dart';
 import '../../features/dev/component_gallery_page.dart';
+import '../../features/settings/presentation/settings_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/studio/presentation/studio_page.dart';
 import '../../core/widgets/coming_soon_page.dart';
@@ -38,10 +42,12 @@ CustomTransitionPage<void> _page(GoRouterState state, Widget child) {
 }
 
 abstract final class AppRouter {
-  /// [signedIn] is wired to the real session in Phase 3; until then nobody can
-  /// be signed in, so protected routes redirect to /login.
+  /// [signedIn] and [recovering] come from the auth state; with neither given,
+  /// protected routes redirect to /login. [refreshListenable] re-runs the
+  /// guards when the auth state changes.
   static GoRouter create({
     bool Function()? signedIn,
+    bool Function()? recovering,
     Listenable? refreshListenable,
     String initialLocation = '/',
   }) {
@@ -51,6 +57,7 @@ abstract final class AppRouter {
       redirect: (context, state) => RouteGuards.redirect(
         location: state.uri,
         signedIn: signedIn?.call() ?? false,
+        recovering: recovering?.call() ?? false,
       ),
       errorBuilder: (context, state) => Scaffold(
         body: EmptyState(
@@ -110,52 +117,23 @@ abstract final class AppRouter {
             ),
             GoRoute(
               path: '/settings',
-              pageBuilder: (c, s) => _page(
-                s,
-                const ComingSoonPage(
-                  title: 'Settings',
-                  icon: Icons.settings_outlined,
-                  phase: 3,
-                  description: 'Account and profile settings arrive with authentication.',
-                ),
-              ),
+              pageBuilder: (c, s) => _page(s, const SettingsPage()),
             ),
             GoRoute(
               path: '/login',
-              pageBuilder: (c, s) => _page(
-                s,
-                const ComingSoonPage(
-                  title: 'Sign in',
-                  icon: Icons.login,
-                  phase: 3,
-                  description: 'Accounts are not connected yet. Sign-in arrives with Supabase authentication.',
-                ),
-              ),
+              pageBuilder: (c, s) => _page(s, const LoginPage()),
             ),
             GoRoute(
               path: '/signup',
-              pageBuilder: (c, s) => _page(
-                s,
-                const ComingSoonPage(
-                  title: 'Create account',
-                  icon: Icons.person_add_alt,
-                  phase: 3,
-                  description: 'Sign-up arrives with Supabase authentication.',
-                ),
-              ),
+              pageBuilder: (c, s) => _page(s, const SignupPage()),
             ),
             GoRoute(
               path: '/forgot-password',
-              pageBuilder: (c, s) => _page(
-                s,
-                const ComingSoonPage(
-                  title: 'Reset password',
-                  icon: Icons.lock_reset,
-                  phase: 3,
-                  description:
-                      'Password recovery arrives with Supabase authentication.',
-                ),
-              ),
+              pageBuilder: (c, s) => _page(s, const ForgotPasswordPage()),
+            ),
+            GoRoute(
+              path: '/reset-password',
+              pageBuilder: (c, s) => _page(s, const ResetPasswordPage()),
             ),
             if (kDebugMode)
               GoRoute(

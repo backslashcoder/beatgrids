@@ -4,7 +4,7 @@
 /// studio (anyone can try the sequencer; saving and publishing will require an
 /// account). Protected: editing an existing beat and account settings.
 abstract final class RouteGuards {
-  static const _protectedExact = {'/settings'};
+  static const _protectedExact = {'/settings', '/reset-password'};
   static const _protectedPrefixes = ['/studio/'];
   static const _authPages = {'/login', '/signup', '/forgot-password'};
 
@@ -12,8 +12,15 @@ abstract final class RouteGuards {
       _protectedExact.contains(path) || _protectedPrefixes.any(path.startsWith);
 
   /// Returns the path to redirect to, or null to allow navigation.
-  static String? redirect({required Uri location, required bool signedIn}) {
+  static String? redirect({
+    required Uri location,
+    required bool signedIn,
+    bool recovering = false,
+  }) {
     final path = location.path;
+    // Arrived via a recovery link: the only useful page is the new-password form.
+    if (signedIn && recovering && path != '/reset-password')
+      return '/reset-password';
     if (!signedIn && isProtected(path)) {
       return Uri(
         path: '/login',

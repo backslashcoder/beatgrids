@@ -11,15 +11,46 @@ void main() {
   });
 
   test('public routes stay open', () {
-    for (final p in ['/', '/explore', '/studio', '/beat/x', '/profile/ada', '/login']) {
+    for (final p in [
+      '/',
+      '/explore',
+      '/studio',
+      '/beat/x',
+      '/profile/ada',
+      '/login',
+    ]) {
       expect(run(p, signedIn: false), isNull, reason: p);
     }
   });
 
-  test('signed-in users skip auth pages and return to where they came from', () {
-    expect(run('/login', signedIn: true), '/');
-    expect(run('/login?from=/studio/abc', signedIn: true), '/studio/abc');
-    expect(run('/signup', signedIn: true), '/');
+  test(
+    'signed-in users skip auth pages and return to where they came from',
+    () {
+      expect(run('/login', signedIn: true), '/');
+      expect(run('/login?from=/studio/abc', signedIn: true), '/studio/abc');
+      expect(run('/signup', signedIn: true), '/');
+    },
+  );
+
+  test('reset-password needs a session; recovery forces the reset page', () {
+    expect(run('/reset-password', signedIn: false), startsWith('/login'));
+    expect(run('/reset-password', signedIn: true), isNull);
+    expect(
+      RouteGuards.redirect(
+        location: Uri.parse('/explore'),
+        signedIn: true,
+        recovering: true,
+      ),
+      '/reset-password',
+    );
+    expect(
+      RouteGuards.redirect(
+        location: Uri.parse('/reset-password'),
+        signedIn: true,
+        recovering: true,
+      ),
+      isNull,
+    );
   });
 
   test('open redirects are ignored', () {
