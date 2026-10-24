@@ -41,6 +41,7 @@ class _StudioView extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<StudioCubit>();
     final text = Theme.of(context).textTheme;
+    final narrow = MediaQuery.sizeOf(context).width < 900;
     return Shortcuts(
       shortcuts: {
         const SingleActivator(LogicalKeyboardKey.space): const _PlayIntent(),
@@ -86,12 +87,17 @@ class _StudioView extends StatelessWidget {
               const StudioToolbar(),
               const SizedBox(height: AppSpacing.md),
               const AudioBanner(),
-              _Panel(child: const TransportBar()),
-              const SizedBox(height: AppSpacing.md),
-              _Panel(child: const SequencerGrid()),
-              if (MediaQuery.sizeOf(context).width < 900) ...[
+              // On phones the grid comes first so it is visible without scrolling.
+              if (narrow) ...[
+                _Panel(child: const SequencerGrid()),
+                const SizedBox(height: AppSpacing.md),
+                _Panel(child: const TransportBar()),
                 const SizedBox(height: AppSpacing.md),
                 _Panel(title: 'Mixer', child: const MixerPanel()),
+              ] else ...[
+                _Panel(child: const TransportBar()),
+                const SizedBox(height: AppSpacing.md),
+                _Panel(child: const SequencerGrid()),
               ],
               const SizedBox(height: AppSpacing.xl),
             ],
