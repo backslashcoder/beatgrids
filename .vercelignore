@@ -1,0 +1,9 @@
+build
+.dart_tool
+.idea
+.flutter-sdk*
+supabase/tests/node_modules
+config/dart_defines.local.json
+.env
+.env.*
+!.env.example

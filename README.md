@@ -38,6 +38,10 @@ flutter build web --release --dart-define-from-file=config/dart_defines.local.js
 cd supabase/tests && npm install && npm test   # database/RLS tests, no Docker needed
 ```
 
+## Deploy
+
+Vercel + Supabase setup is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) (`vercel.json`, `scripts/vercel_build.sh`).
+
 ## Layout
 
 - `lib/features/studio/models/beat_pattern.dart` - versioned, validated pattern model
